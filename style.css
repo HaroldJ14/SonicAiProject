@@ -1,6 +1,6 @@
 * { box-sizing: border-box; }
-html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
-body { font-family: Arial, Helvetica, sans-serif; background: #75d8ff; color: white; }
+html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; user-select: none; }
+body { font-family: Arial, Helvetica, sans-serif; background: #0b1d3a; color: white; }
 canvas { display: block; }
 #hud {
   position: fixed; z-index: 2; top: 18px; left: 22px; right: 22px;
@@ -32,19 +32,15 @@ h1 span { color: #ffe04b; }
 button {
   border: 3px solid white; border-radius: 28px; padding: 13px 28px;
   background: #ffcf27; color: #173c70; font-size: 16px; font-weight: 1000;
-  cursor: pointer; box-shadow: 0 5px 0 #b77b08; margin: 6px;
+  cursor: pointer; box-shadow: 0 5px 0 #b77b08; margin: 6px; transition: transform 0.1s;
 }
 button:hover { transform: translateY(-2px); }
-button.secondary {
-  background: #1a5a9e; color: #fff; box-shadow: 0 5px 0 #0d3a6b;
-  border-color: #7ab8ff;
-}
+button.secondary { background: #1a5a9e; color: #fff; box-shadow: 0 5px 0 #0d3a6b; border-color: #7ab8ff; }
 button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 12px; }
 #hint {
   position: fixed; z-index: 2; bottom: 13px; left: 50%; transform: translateX(-50%);
-  font-size: 12px; white-space: nowrap; text-shadow: 1px 2px 3px #123c65;
-  pointer-events: none;
+  font-size: 12px; white-space: nowrap; text-shadow: 1px 2px 3px #123c65; pointer-events: none;
 }
 #error { display:none; position:fixed; z-index:10; inset:auto 12px 48px; background:#8b1721; padding:12px; border-radius:8px; }
 #boostbar {
@@ -54,9 +50,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 }
 #boostfill { height: 100%; width: 50%; background: linear-gradient(90deg, #28d7ff, #8cf0ff); transition: width 0.05s; }
 #boostfill.locked { background: #7a8794; }
-#reticle {
-  position: fixed; z-index: 3; left: 0; top: 0; width: 0; height: 0; pointer-events: none;
-}
+#reticle { position: fixed; z-index: 3; left: 0; top: 0; width: 0; height: 0; pointer-events: none; }
 #reticle::before {
   content: ''; position: absolute; left: -26px; top: -26px; width: 52px; height: 52px;
   border: 3px solid #ffe04b; border-radius: 50%; box-shadow: 0 0 10px #ffe04b;
@@ -72,8 +66,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 #level-name {
   position: fixed; z-index: 4; top: 18%; left: 50%; transform: translateX(-50%);
   font-size: clamp(28px, 6vw, 52px); font-weight: 1000; font-style: italic; color: #fff;
-  text-shadow: 3px 3px 0 #164879; opacity: 0; transition: opacity .4s; pointer-events: none;
-  letter-spacing: 2px;
+  text-shadow: 3px 3px 0 #164879; opacity: 0; transition: opacity .4s; pointer-events: none; letter-spacing: 2px;
 }
 #level-name.show { opacity: 1; }
 .results { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px auto; max-width: 360px; }
@@ -81,10 +74,7 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .results b { display: block; color: #ffe04b; font-size: 12px; letter-spacing: 2px; margin-bottom: 4px; }
 .results span { font-size: 22px; font-weight: 900; }
 .results .rank { font-size: 34px; color: #ffe04b; font-style: italic; }
-.level-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px; margin: 20px 0; text-align: left;
-}
+.level-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin: 20px 0; text-align: left; }
 .level-card {
   background: #ffffff14; border: 2px solid #ffffff44; border-radius: 14px;
   padding: 16px; cursor: pointer; transition: transform .15s, border-color .15s;
@@ -99,6 +89,5 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
   #hud { top: 12px; left: 12px; right: 12px; }
   .logo { font-size: 21px; } .stats { gap: 10px; font-size: 12px; }
   .stats strong { font-size: 17px; } #hint { font-size: 10px; white-space: normal; width: 94vw; text-align: center; }
-  .panel { padding: 23px 17px; }
-  .btn-row { flex-direction: column; align-items: center; }
+  .panel { padding: 23px 17px; } .btn-row { flex-direction: column; align-items: center; }
 }
