@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sonic 3D Starter</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="hud">
+    <div class="brand">SONIC <span>3D</span></div>
+    <div class="stats">
+      <div>RINGS <strong id="ring-count">0</strong></div>
+      <div>SPEED <strong id="speed-count">0</strong></div>
+    </div>
+  </div>
+
+  <div id="message">
+    <h1>GREEN HILL DASH</h1>
+    <p>Collect rings and dodge the red bumpers!</p>
+    <p class="controls">WASD / ARROWS: MOVE &nbsp; • &nbsp; SPACE: JUMP &nbsp; • &nbsp; SHIFT: BOOST</p>
+    <button id="start-button">START RUNNING</button>
+  </div>
+
+  <div id="help">WASD / arrows · Space to jump · Shift to boost · R to restart</div>
+  <div id="error"></div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
