@@ -3,28 +3,44 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sonic 3D Starter</title>
+  <title>Sonic 3D — Hybrid Prototype</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="hud">
-    <div class="brand">SONIC <span>3D</span></div>
+    <div class="logo">SONIC <span>3D</span></div>
     <div class="stats">
-      <div>RINGS <strong id="ring-count">0</strong></div>
-      <div>SPEED <strong id="speed-count">0</strong></div>
+      <div>RINGS <strong id="rings">0</strong></div>
+      <div>SPEED <strong id="speed">0</strong></div>
     </div>
   </div>
 
-  <div id="message">
-    <h1>GREEN HILL DASH</h1>
-    <p>Collect rings and dodge the red bumpers!</p>
-    <p class="controls">WASD / ARROWS: MOVE &nbsp; • &nbsp; SPACE: JUMP &nbsp; • &nbsp; SHIFT: BOOST</p>
-    <button id="start-button">START RUNNING</button>
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <p class="eyebrow">3D PLATFORMING PROTOTYPE</p>
+      <h1>GREEN HILL<br><span>ADVENTURE</span></h1>
+      <p>Explore the level, build up speed, collect rings, and reach the goal!</p>
+      <div class="control-grid">
+        <span><b>WASD / ARROWS</b> Move</span>
+        <span><b>SPACE</b> Jump</span>
+        <span><b>SHIFT</b> Boost</span>
+        <span><b>E</b> Homing attack</span>
+      </div>
+      <button id="start">START GAME</button>
+    </div>
   </div>
 
-  <div id="help">WASD / arrows · Space to jump · Shift to boost · R to restart</div>
-  <div id="error"></div>
+  <div id="finish" class="overlay hidden">
+    <div class="panel">
+      <p class="eyebrow">LEVEL COMPLETE</p>
+      <h1>AWESOME<br><span>RUN!</span></h1>
+      <p id="finish-stats">You reached the goal!</p>
+      <button id="again">PLAY AGAIN</button>
+    </div>
+  </div>
 
+  <div id="hint">WASD / arrows: move · Space: jump · Shift: boost · E: homing attack · R: restart</div>
+  <div id="error"></div>
   <script type="module" src="game.js"></script>
 </body>
 </html>

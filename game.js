@@ -1,26 +1,25 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 
-// ------------------------------------------------------------
-// GREEN HILL DASH — small 3D browser-game starter
-// Edit the values in this section to tune the game.
-// ------------------------------------------------------------
+// SONIC 3D — HYBRID GAMEPLAY PROTOTYPE
+// Adventure-style movement + a Generations-inspired boost.
+// The level is a real space to run around in; it does not scroll automatically.
+
 const SETTINGS = {
-  laneLimit: 4.2,
-  forwardSpeed: 17,
-  boostSpeed: 28,
-  jumpPower: 11,
-  gravity: 27,
-  ringSpacing: 8,
-  obstacleSpacing: 24
+  walkSpeed: 13,
+  boostSpeed: 27,
+  acceleration: 34,
+  airControl: 0.58,
+  jumpPower: 12,
+  gravity: 30,
+  levelLength: 190,
+  worldWidth: 22
 };
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x79d9ff);
-scene.fog = new THREE.Fog(0x79d9ff, 35, 145);
+scene.background = new THREE.Color(0x79dfff);
+scene.fog = new THREE.Fog(0x79dfff, 65, 190);
 
-const camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 220);
-camera.position.set(0, 5.5, 10);
-
+const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 300);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -28,262 +27,343 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.HemisphereLight(0xdaf5ff, 0x54752d, 2.0));
+scene.add(new THREE.HemisphereLight(0xe6faff, 0x527a39, 2.0));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
-sun.position.set(-8, 18, 10);
+sun.position.set(-25, 40, 25);
 sun.castShadow = true;
 scene.add(sun);
 
 // Materials
-const grassMat = new THREE.MeshStandardMaterial({ color: 0x48b83d, roughness: 1 });
-const pathMat = new THREE.MeshStandardMaterial({ color: 0xc98b42, roughness: 1 });
-const blueMat = new THREE.MeshStandardMaterial({ color: 0x0879e8, roughness: 0.55 });
-const lightBlueMat = new THREE.MeshStandardMaterial({ color: 0x35baff });
-const redMat = new THREE.MeshStandardMaterial({ color: 0xe83932, roughness: 0.5 });
-const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const goldMat = new THREE.MeshStandardMaterial({ color: 0xffd52a, metalness: 0.65, roughness: 0.25 });
+const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
+const grassMat = mat(0x42b943);
+const pathMat = mat(0xc58a43);
+const blueMat = mat(0x0879e8, { roughness: 0.5 });
+const creamMat = mat(0xffd9a2);
+const redMat = mat(0xe63232);
+const whiteMat = mat(0xffffff);
+const goldMat = mat(0xffd52b, { metalness: 0.55, roughness: 0.24 });
+const darkMat = mat(0x27384a);
 
-// Ground and track
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), grassMat);
+// Ground and broad running path
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 300), grassMat);
 ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.18;
+ground.position.set(0, -0.18, -75);
 ground.receiveShadow = true;
 scene.add(ground);
 
-const track = new THREE.Mesh(new THREE.BoxGeometry(11, 0.25, 220), pathMat);
-track.position.set(0, -0.08, -75);
-track.receiveShadow = true;
-scene.add(track);
+const path = new THREE.Mesh(new THREE.BoxGeometry(15, 0.25, SETTINGS.levelLength + 25), pathMat);
+path.position.set(0, -0.08, -82);
+path.receiveShadow = true;
+scene.add(path);
 
-// Simple repeating scenery
-const scenery = [];
-for (let i = 0; i < 34; i++) {
+// Decorative checker-like path edge markers
+for (let z = 5; z > -SETTINGS.levelLength; z -= 12) {
   for (const side of [-1, 1]) {
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.22, 0.3, 2.1, 7),
-      new THREE.MeshStandardMaterial({ color: 0x8a4d25 })
-    );
-    trunk.position.set(side * (8 + Math.random() * 5), 0.95, -i * 8 - 8);
-    scene.add(trunk);
-    const leaves = new THREE.Mesh(
-      new THREE.SphereGeometry(1.35 + Math.random() * 0.5, 8, 7),
-      new THREE.MeshStandardMaterial({ color: 0x168b43 })
-    );
-    leaves.position.set(trunk.position.x, 2.7, trunk.position.z);
-    scene.add(leaves);
-    scenery.push(trunk, leaves);
+    const marker = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 5), mat(0xf3d18b));
+    marker.position.set(side * 7.15, 0.08, z);
+    scene.add(marker);
   }
 }
 
-// Player: a blue mascot placeholder built from basic 3D shapes.
-// You can replace this group with a model you make in Blender.
+// Hills and simple trees
+for (let i = 0; i < 44; i++) {
+  const side = i % 2 === 0 ? -1 : 1;
+  const z = 8 - Math.floor(i / 2) * 9 - Math.random() * 4;
+  const x = side * (13 + Math.random() * 18);
+  const hill = new THREE.Mesh(
+    new THREE.SphereGeometry(5 + Math.random() * 5, 12, 9),
+    mat([0x48bd4b, 0x55c64e, 0x269b43][i % 3])
+  );
+  hill.scale.y = 0.65;
+  hill.position.set(x, 1.8, z);
+  scene.add(hill);
+
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.35, 2.2, 7), mat(0x875027));
+  trunk.position.set(x + side * 3, 1.0, z - 2);
+  scene.add(trunk);
+  const crown = new THREE.Mesh(new THREE.SphereGeometry(1.5, 9, 8), mat(0x168d43));
+  crown.position.set(trunk.position.x, 2.7, trunk.position.z);
+  scene.add(crown);
+}
+
+// Player placeholder: a blue mascot made from simple shapes.
+// Replace this group with a Blender GLB model when you have one.
 const player = new THREE.Group();
 scene.add(player);
 
 const body = new THREE.Mesh(new THREE.SphereGeometry(0.62, 20, 16), blueMat);
 body.scale.set(0.82, 1.05, 0.72);
-body.position.y = 0.85;
+body.position.y = 0.88;
 body.castShadow = true;
 player.add(body);
 
-const belly = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12),
-  new THREE.MeshStandardMaterial({ color: 0xffd7a0 }));
+const belly = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 12), creamMat);
 belly.scale.set(0.85, 0.9, 0.38);
-belly.position.set(0, 0.77, 0.43);
+belly.position.set(0, 0.78, 0.43);
 player.add(belly);
 
-const face = new THREE.Mesh(new THREE.SphereGeometry(0.37, 16, 12), lightBlueMat);
-face.scale.set(1.05, 0.68, 0.75);
-face.position.set(0, 1.23, 0.25);
-player.add(face);
+const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 12), mat(0x1595ed));
+muzzle.scale.set(1.05, 0.65, 0.75);
+muzzle.position.set(0, 1.24, 0.25);
+player.add(muzzle);
 
 for (const x of [-0.16, 0.16]) {
   const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), whiteMat);
-  eye.position.set(x, 1.34, 0.52);
+  eye.position.set(x, 1.36, 0.51);
   player.add(eye);
 }
-const nose = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10),
-  new THREE.MeshStandardMaterial({ color: 0x17233a }));
-nose.position.set(0, 1.19, 0.61);
+const nose = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 10), darkMat);
+nose.position.set(0, 1.2, 0.62);
 player.add(nose);
 
 for (const x of [-0.28, 0.28]) {
-  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.2, 0.7),
-    new THREE.MeshStandardMaterial({ color: 0xe92c2c }));
+  const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.43, 0.2, 0.72), mat(0xe52b2b));
   shoe.position.set(x, 0.14, 0.02);
   shoe.castShadow = true;
   player.add(shoe);
 }
-player.position.set(0, 0, 2);
+player.position.set(0, 0, 7);
+player.rotation.y = Math.PI; // face down the level, toward negative Z
 
-// Rings and obstacles
+// Rings
 const rings = [];
-const obstacles = [];
 const ringGeometry = new THREE.TorusGeometry(0.48, 0.105, 10, 24);
-
-function addRing(x, z, y = 1.35) {
+function addRing(x, y, z) {
   const ring = new THREE.Mesh(ringGeometry, goldMat);
   ring.position.set(x, y, z);
   ring.rotation.y = Math.PI / 2;
-  ring.castShadow = true;
   scene.add(ring);
   rings.push(ring);
 }
+for (let row = 0; row < 22; row++) {
+  const z = -row * 7 - 5;
+  const x = Math.sin(row * 0.65) * 3.2;
+  addRing(x - 1, 1.35, z);
+  addRing(x, 1.35, z);
+  addRing(x + 1, 1.35, z);
+}
 
-function addObstacle(x, z) {
-  const bumper = new THREE.Mesh(new THREE.SphereGeometry(0.68, 16, 12), redMat);
-  bumper.position.set(x, 0.68, z);
-  bumper.castShadow = true;
-  scene.add(bumper);
-  const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.69, 0.07, 8, 24), whiteMat);
-  stripe.position.copy(bumper.position);
+// Targets for homing attack and obstacles
+const targets = [];
+function addTarget(x, z) {
+  const group = new THREE.Group();
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(0.7, 16, 12), redMat);
+  const stripe = new THREE.Mesh(new THREE.TorusGeometry(0.71, 0.08, 8, 22), whiteMat);
   stripe.rotation.x = Math.PI / 2;
-  scene.add(stripe);
-  obstacles.push({ mesh: bumper, stripe });
+  group.add(orb, stripe);
+  group.position.set(x, 0.85, z);
+  scene.add(group);
+  targets.push(group);
 }
+for (const [x, z] of [[-3, -34], [3, -61], [0, -91], [-3, -122], [3, -151]]) addTarget(x, z);
 
-for (let row = 0; row < 16; row++) {
-  const z = -row * SETTINGS.ringSpacing - 8;
-  const lane = [-3, 0, 3][Math.floor(Math.random() * 3)];
-  for (let j = -1; j <= 1; j++) addRing(lane + j * 0.9, z - Math.abs(j) * 0.35);
+// A checkpoint arch
+const checkpoint = new THREE.Group();
+const postMat = mat(0xffdf43, { emissive: 0x553300 });
+for (const x of [-5, 5]) {
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.45, 4, 0.45), postMat);
+  post.position.set(x, 2, 0);
+  checkpoint.add(post);
 }
-for (let i = 0; i < 8; i++) {
-  const x = [-3.2, 0, 3.2][Math.floor(Math.random() * 3)];
-  addObstacle(x, -20 - i * SETTINGS.obstacleSpacing);
+const topBar = new THREE.Mesh(new THREE.BoxGeometry(10.4, 0.45, 0.45), postMat);
+topBar.position.y = 4;
+checkpoint.add(topBar);
+checkpoint.position.z = -100;
+scene.add(checkpoint);
+
+// Finish gate
+const goal = new THREE.Group();
+const goalMat = mat(0x28d7ff, { emissive: 0x075577 });
+for (const x of [-5, 5]) {
+  const post = new THREE.Mesh(new THREE.BoxGeometry(0.55, 5, 0.55), goalMat);
+  post.position.set(x, 2.5, 0);
+  goal.add(post);
 }
+const goalTop = new THREE.Mesh(new THREE.BoxGeometry(10.5, 0.55, 0.55), goalMat);
+goalTop.position.y = 5;
+goal.add(goalTop);
+goal.position.z = -SETTINGS.levelLength;
+scene.add(goal);
 
 const keys = {};
 let running = false;
+let finished = false;
 let ringsCollected = 0;
+let velocity = new THREE.Vector3();
 let velocityY = 0;
-let distance = 0;
-let currentSpeed = SETTINGS.forwardSpeed;
-let lastSpawnZ = -145;
+let grounded = true;
+let boostOn = false;
+let homingTime = 0;
+let checkpointReached = false;
+let checkpointPosition = new THREE.Vector3(0, 0, -95);
 
-const ringCount = document.getElementById('ring-count');
-const speedCount = document.getElementById('speed-count');
-const message = document.getElementById('message');
-const startButton = document.getElementById('start-button');
+const ringDisplay = document.getElementById('rings');
+const speedDisplay = document.getElementById('speed');
+const intro = document.getElementById('intro');
+const finish = document.getElementById('finish');
 
-addEventListener('keydown', (event) => {
-  keys[event.code] = true;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
-    event.preventDefault();
-  }
-  if (event.code === 'KeyR') resetGame();
-  if (event.code === 'Space' && running && player.position.y <= 0.02) {
+addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (e.code === 'Space' && running && grounded) {
     velocityY = SETTINGS.jumpPower;
+    grounded = false;
   }
+  if (e.code === 'KeyE' && running) startHomingAttack();
+  if (e.code === 'KeyR') resetGame();
 });
-addEventListener('keyup', (event) => keys[event.code] = false);
+addEventListener('keyup', (e) => keys[e.code] = false);
+
+function startHomingAttack() {
+  if (targets.length === 0) return;
+  let nearest = null;
+  let best = 13;
+  for (const target of targets) {
+    const d = target.position.distanceTo(player.position);
+    if (d < best) { best = d; nearest = target; }
+  }
+  if (nearest) {
+    player.position.copy(nearest.position);
+    player.position.y = 0;
+    velocity.set(0, 0, -SETTINGS.boostSpeed * 0.65);
+    velocityY = 3;
+    grounded = false;
+    scene.remove(nearest);
+    targets.splice(targets.indexOf(nearest), 1);
+    homingTime = 0.22;
+  }
+}
 
 function resetGame() {
   ringsCollected = 0;
-  distance = 0;
+  ringDisplay.textContent = '0';
+  velocity.set(0, 0, 0);
   velocityY = 0;
-  player.position.set(0, 0, 2);
+  grounded = true;
+  boostOn = false;
+  checkpointReached = false;
+  player.position.set(0, 0, 7);
+  player.rotation.y = Math.PI;
   for (const ring of rings) scene.remove(ring);
-  for (const item of obstacles) {
-    scene.remove(item.mesh);
-    scene.remove(item.stripe);
-  }
   rings.length = 0;
-  obstacles.length = 0;
-  for (let row = 0; row < 16; row++) {
-    const z = -row * SETTINGS.ringSpacing - 8;
-    const lane = [-3, 0, 3][Math.floor(Math.random() * 3)];
-    for (let j = -1; j <= 1; j++) addRing(lane + j * 0.9, z - Math.abs(j) * 0.35);
+  for (let row = 0; row < 22; row++) {
+    const z = -row * 7 - 5;
+    const x = Math.sin(row * 0.65) * 3.2;
+    addRing(x - 1, 1.35, z); addRing(x, 1.35, z); addRing(x + 1, 1.35, z);
   }
-  for (let i = 0; i < 8; i++) {
-    const x = [-3.2, 0, 3.2][Math.floor(Math.random() * 3)];
-    addObstacle(x, -20 - i * SETTINGS.obstacleSpacing);
-  }
-  ringCount.textContent = '0';
-  message.style.display = 'none';
+  for (const target of targets) scene.remove(target);
+  targets.length = 0;
+  for (const [x, z] of [[-3, -34], [3, -61], [0, -91], [-3, -122], [3, -151]]) addTarget(x, z);
   running = true;
+  finished = false;
+  intro.classList.add('hidden');
+  finish.classList.add('hidden');
 }
-startButton.addEventListener('click', resetGame);
+document.getElementById('start').addEventListener('click', resetGame);
+document.getElementById('again').addEventListener('click', resetGame);
 
 const clock = new THREE.Clock();
+const desiredCameraPosition = new THREE.Vector3();
+const cameraLookAt = new THREE.Vector3();
+
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.04);
+  const dt = Math.min(clock.getDelta(), 0.035);
 
-  if (running) {
-    const boosting = keys.ShiftLeft || keys.ShiftRight;
-    currentSpeed = boosting ? SETTINGS.boostSpeed : SETTINGS.forwardSpeed;
+  if (running && !finished) {
+    const forward = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+    const sideways = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+    boostOn = !!(keys.ShiftLeft || keys.ShiftRight);
 
-    const move = 7.5 * dt;
-    if (keys.ArrowLeft || keys.KeyA) player.position.x -= move;
-    if (keys.ArrowRight || keys.KeyD) player.position.x += move;
-    player.position.x = THREE.MathUtils.clamp(player.position.x, -SETTINGS.laneLimit, SETTINGS.laneLimit);
+    // Camera-relative movement: W moves along the level, A/D steer.
+    const targetForward = forward !== 0 ? forward * (boostOn ? SETTINGS.boostSpeed : SETTINGS.walkSpeed) : 0;
+    const targetSide = sideways * (boostOn ? 13 : 10);
+    const control = grounded ? 1 : SETTINGS.airControl;
+    velocity.z = THREE.MathUtils.damp(velocity.z, -targetForward, SETTINGS.acceleration * control, dt);
+    velocity.x = THREE.MathUtils.damp(velocity.x, targetSide, SETTINGS.acceleration * control, dt);
 
-    // Jump physics
-    if (player.position.y > 0 || velocityY > 0) {
+    // Boost can also build forward momentum when Shift is held.
+    if (boostOn && forward === 0) {
+      velocity.z = THREE.MathUtils.damp(velocity.z, -SETTINGS.boostSpeed, 16 * control, dt);
+    }
+
+    player.position.x += velocity.x * dt;
+    player.position.z += velocity.z * dt;
+    player.position.x = THREE.MathUtils.clamp(player.position.x, -SETTINGS.worldWidth / 2, SETTINGS.worldWidth / 2);
+
+    // Jump and gravity
+    if (!grounded) {
       velocityY -= SETTINGS.gravity * dt;
       player.position.y += velocityY * dt;
-      if (player.position.y < 0) {
+      if (player.position.y <= 0) {
         player.position.y = 0;
         velocityY = 0;
+        grounded = true;
       }
     }
 
-    // Move the world toward the player to create forward motion.
-    const dz = currentSpeed * dt;
-    distance += dz;
-    for (const ring of rings) {
-      ring.position.z += dz;
-      ring.rotation.z += dt * 2.5;
-      if (ring.position.distanceTo(new THREE.Vector3(player.position.x, player.position.y + 1, player.position.z)) < 1.05) {
-        scene.remove(ring);
-        ring.userData.collected = true;
-        ringsCollected++;
-        ringCount.textContent = ringsCollected;
-      }
+    // Face the direction of travel, with a gentle steering lean.
+    if (Math.abs(velocity.x) + Math.abs(velocity.z) > 1.2) {
+      const angle = Math.atan2(velocity.x, -velocity.z);
+      player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, angle, 0.13);
     }
+    player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, -sideways * 0.12, 0.12);
+    body.rotation.x = Math.sin(performance.now() * 0.012) * Math.min(0.12, velocity.length() * 0.003);
+
+    // Ring collection
     for (let i = rings.length - 1; i >= 0; i--) {
-      if (rings[i].userData.collected || rings[i].position.z > 13) rings.splice(i, 1);
-    }
-
-    for (const obstacle of obstacles) {
-      obstacle.mesh.position.z += dz;
-      obstacle.stripe.position.z += dz;
-      const dx = Math.abs(obstacle.mesh.position.x - player.position.x);
-      const dzPlayer = Math.abs(obstacle.mesh.position.z - player.position.z);
-      if (dx < 0.95 && dzPlayer < 0.9 && player.position.y < 0.7) {
-        // A bump slows you briefly instead of ending the prototype run.
-        currentSpeed = 7;
-      }
-    }
-    for (let i = obstacles.length - 1; i >= 0; i--) {
-      if (obstacles[i].mesh.position.z > 13) {
-        scene.remove(obstacles[i].mesh);
-        scene.remove(obstacles[i].stripe);
-        obstacles.splice(i, 1);
+      const ring = rings[i];
+      ring.rotation.z += dt * 2.4;
+      if (ring.position.distanceTo(new THREE.Vector3(player.position.x, player.position.y + 0.9, player.position.z)) < 1.25) {
+        scene.remove(ring);
+        rings.splice(i, 1);
+        ringsCollected++;
+        ringDisplay.textContent = ringsCollected;
       }
     }
 
-    // Keep feeding the course ahead.
-    if (rings.length < 24) {
-      const z = -110 - Math.random() * 35;
-      const lane = [-3, 0, 3][Math.floor(Math.random() * 3)];
-      for (let j = -1; j <= 1; j++) addRing(lane + j * 0.9, z - Math.abs(j) * 0.35);
-    }
-    if (obstacles.length < 5) {
-      const x = [-3.2, 0, 3.2][Math.floor(Math.random() * 3)];
-      addObstacle(x, -100 - Math.random() * 35);
+    // Basic target bump collision; homing attack removes targets.
+    for (const target of targets) {
+      if (target.position.distanceTo(player.position) < 1.2 && player.position.y < 1.1) {
+        velocity.z *= 0.55;
+      }
     }
 
-    // Running animation
-    player.rotation.z = THREE.MathUtils.lerp(player.rotation.z,
-      (keys.ArrowLeft || keys.KeyA) ? 0.12 : (keys.ArrowRight || keys.KeyD) ? -0.12 : 0, 0.12);
-    body.rotation.x = Math.sin(distance * 0.035) * 0.08;
-    speedCount.textContent = Math.round(currentSpeed * 4);
+    if (!checkpointReached && player.position.z < -97) {
+      checkpointReached = true;
+      checkpointPosition.set(0, 0, -95);
+    }
+
+    // Fall recovery
+    if (player.position.y < -8) {
+      player.position.copy(checkpointReached ? checkpointPosition : new THREE.Vector3(0, 0, 7));
+      velocity.set(0, 0, 0);
+      velocityY = 0;
+      grounded = true;
+    }
+
+    // Goal trigger
+    if (player.position.z < -SETTINGS.levelLength + 2) {
+      finished = true;
+      document.getElementById('finish-stats').textContent =
+        `You collected ${ringsCollected} rings. Nice running!`;
+      finish.classList.remove('hidden');
+    }
+
+    speedDisplay.textContent = Math.round(velocity.length() * 4);
   }
 
-  camera.position.x = THREE.MathUtils.lerp(camera.position.x, player.position.x * 0.35, 0.05);
-  camera.position.y = 5.2 + player.position.y * 0.25;
-  camera.lookAt(player.position.x * 0.25, 1.0 + player.position.y * 0.25, -5);
+  // Third-person chase camera: always stays behind the character.
+  const behind = new THREE.Vector3(0, 5.2, 10);
+  behind.applyAxisAngle(new THREE.Vector3(0, 1, 0), player.rotation.y - Math.PI);
+  desiredCameraPosition.set(
+    player.position.x + behind.x,
+    player.position.y + behind.y,
+    player.position.z + behind.z
+  );
+  camera.position.lerp(desiredCameraPosition, 1 - Math.pow(0.001, dt));
+  cameraLookAt.set(player.position.x, player.position.y + 1.1, player.position.z - 5);
+  camera.lookAt(cameraLookAt);
 
   renderer.render(scene, camera);
 }
