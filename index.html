@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sonic 3D — Hybrid Prototype</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="hud">
+    <div class="logo">SONIC <span>3D</span></div>
+    <div class="stats">
+      <div>RINGS <strong id="rings">0</strong></div>
+      <div>SCORE <strong id="score">0</strong></div>
+      <div>TIME <strong id="time">0:00.00</strong></div>
+      <div>LIVES <strong id="lives">×3</strong></div>
+      <div>SPEED <strong id="speed">0</strong></div>
+    </div>
+  </div>
+
+  <div id="boostbar" aria-label="Boost gauge"><div id="boostfill"></div></div>
+  <div id="reticle" class="hidden"></div>
+  <div id="toast"></div>
+
+  <div id="intro" class="overlay">
+    <div class="panel">
+      <p class="eyebrow">3D PLATFORMING PROTOTYPE</p>
+      <h1>GREEN HILL<br><span>ADVENTURE</span></h1>
+      <p>Run, boost and bounce to the goal. Collect rings, smash the red bots, and watch for spikes and pits!</p>
+      <div class="control-grid">
+        <span><b>WASD / ARROWS</b> Move</span>
+        <span><b>SPACE</b> Jump (hold = higher)</span>
+        <span><b>SHIFT</b> Boost (uses gauge)</span>
+        <span><b>E</b> Homing attack on the lock-on target</span>
+        <span><b>P / ESC</b> Pause</span>
+        <span><b>R / M</b> Restart / Mute</span>
+      </div>
+      <button id="start">START GAME</button>
+    </div>
+  </div>
+
+  <div id="pause" class="overlay hidden">
+    <div class="panel">
+      <p class="eyebrow">PAUSED</p>
+      <h1>TAKE A<br><span>BREATHER</span></h1>
+      <button id="resume">RESUME</button>
+    </div>
+  </div>
+
+  <div id="gameover" class="overlay hidden">
+    <div class="panel">
+      <p class="eyebrow">OUT OF LIVES</p>
+      <h1>GAME<br><span>OVER</span></h1>
+      <p id="go-stats"></p>
+      <button id="retry">TRY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="finish" class="overlay hidden">
+    <div class="panel">
+      <p class="eyebrow">LEVEL COMPLETE</p>
+      <h1>AWESOME<br><span>RUN!</span></h1>
+      <div class="results">
+        <div><b>TIME</b><span id="f-time">0:00.00</span></div>
+        <div><b>RINGS</b><span id="f-rings">0</span></div>
+        <div><b>SCORE</b><span id="f-score">0</span></div>
+        <div><b>RANK</b><span id="f-rank" class="rank">-</span></div>
+      </div>
+      <p id="f-best"></p>
+      <button id="again">PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="hint">WASD / arrows: move · Space: jump · Shift: boost · E: homing attack · P: pause · R: restart · M: mute</div>
+  <div id="error"></div>
+  <script type="module" src="game.js" onerror="var e=document.getElementById('error');e.textContent='Could not load game.js. Serve this folder from a local web server (see README).';e.style.display='block';"></script>
+</body>
+</html>
