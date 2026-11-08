@@ -17,7 +17,8 @@ const SETTINGS = {
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x79dfff);
-scene.fog = new THREE.Fog(0x79dfff, 65, 190);
+// FIX: fog far pushed beyond levelLength so the goal gate is visible on approach.
+scene.fog = new THREE.Fog(0x79dfff, 80, 260);
 
 const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 300);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -31,7 +32,16 @@ scene.add(new THREE.HemisphereLight(0xe6faff, 0x527a39, 2.0));
 const sun = new THREE.DirectionalLight(0xffffff, 2.2);
 sun.position.set(-25, 40, 25);
 sun.castShadow = true;
+// FIX: configure shadow camera + map so shadows cover the whole level area.
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 150;
+sun.shadow.camera.left = -45;
+sun.shadow.camera.right = 45;
+sun.shadow.camera.top = 45;
+sun.shadow.camera.bottom = -45;
 scene.add(sun);
+scene.add(sun.target);
 
 // Materials
 const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
@@ -131,17 +141,21 @@ const ringGeometry = new THREE.TorusGeometry(0.48, 0.105, 10, 24);
 function addRing(x, y, z) {
   const ring = new THREE.Mesh(ringGeometry, goldMat);
   ring.position.set(x, y, z);
-  ring.rotation.y = Math.PI / 2;
+  // FIX: leave ring in default orientation and spin around Y in animate
+  // (classic coin-spin) instead of an odd tumble from combined Y/Z rotation.
   scene.add(ring);
   rings.push(ring);
 }
-for (let row = 0; row < 22; row++) {
-  const z = -row * 7 - 5;
-  const x = Math.sin(row * 0.65) * 3.2;
-  addRing(x - 1, 1.35, z);
-  addRing(x, 1.35, z);
-  addRing(x + 1, 1.35, z);
+function seedRings() {
+  for (let row = 0; row < 22; row++) {
+    const z = -row * 7 - 5;
+    const x = Math.sin(row * 0.65) * 3.2;
+    addRing(x - 1, 1.35, z);
+    addRing(x, 1.35, z);
+    addRing(x + 1, 1.35, z);
+  }
 }
+seedRings();
 
 // Targets for homing attack and obstacles
 const targets = [];
@@ -155,7 +169,10 @@ function addTarget(x, z) {
   scene.add(group);
   targets.push(group);
 }
-for (const [x, z] of [[-3, -34], [3, -61], [0, -91], [-3, -122], [3, -151]]) addTarget(x, z);
+function seedTargets() {
+  for (const [x, z] of [[-3, -34], [3, -61], [0, -91], [-3, -122], [3, -151]]) addTarget(x, z);
+}
+seedTargets();
 
 // A checkpoint arch
 const checkpoint = new THREE.Group();
@@ -193,29 +210,42 @@ let velocity = new THREE.Vector3();
 let velocityY = 0;
 let grounded = true;
 let boostOn = false;
-let homingTime = 0;
+let homingCooldown = 0;          // FIX: real cooldown replaces the old dead `homingTime`
 let checkpointReached = false;
-let checkpointPosition = new THREE.Vector3(0, 0, -95);
+const checkpointPosition = new THREE.Vector3(0, 0, -95);
 
 const ringDisplay = document.getElementById('rings');
 const speedDisplay = document.getElementById('speed');
 const intro = document.getElementById('intro');
 const finish = document.getElementById('finish');
 
+// FIX: shortest-path angle interpolation — avoids long-way spins at ±π.
+function lerpAngle(a, b, t) {
+  let d = (b - a) % (Math.PI * 2);
+  if (d > Math.PI) d -= Math.PI * 2;
+  if (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
+}
+
 addEventListener('keydown', (e) => {
-  keys[e.code] = true;
   if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
-  if (e.code === 'Space' && running && grounded) {
+  // FIX: ignore auto-repeat so Space/E/R don't fire dozens of times per second.
+  if (e.repeat) return;
+
+  keys[e.code] = true;
+  if (e.code === 'Space' && running && !finished && grounded) {
     velocityY = SETTINGS.jumpPower;
     grounded = false;
   }
-  if (e.code === 'KeyE' && running) startHomingAttack();
+  if (e.code === 'KeyE' && running && !finished) startHomingAttack();
   if (e.code === 'KeyR') resetGame();
 });
 addEventListener('keyup', (e) => keys[e.code] = false);
 
 function startHomingAttack() {
-  if (targets.length === 0) return;
+  // FIX: require airborne + cooldown so it can't be spammed from the ground.
+  if (targets.length === 0 || grounded || homingCooldown > 0) return;
+
   let nearest = null;
   let best = 13;
   for (const target of targets) {
@@ -223,14 +253,13 @@ function startHomingAttack() {
     if (d < best) { best = d; nearest = target; }
   }
   if (nearest) {
-    player.position.copy(nearest.position);
-    player.position.y = 0;
+    player.position.set(nearest.position.x, 0, nearest.position.z);
     velocity.set(0, 0, -SETTINGS.boostSpeed * 0.65);
-    velocityY = 3;
+    velocityY = 4;
     grounded = false;
     scene.remove(nearest);
     targets.splice(targets.indexOf(nearest), 1);
-    homingTime = 0.22;
+    homingCooldown = 0.6;
   }
 }
 
@@ -241,19 +270,22 @@ function resetGame() {
   velocityY = 0;
   grounded = true;
   boostOn = false;
+  // FIX: reset ALL transient state that used to leak between runs.
+  homingCooldown = 0;
   checkpointReached = false;
+  checkpointPosition.set(0, 0, -95);
   player.position.set(0, 0, 7);
-  player.rotation.y = Math.PI;
+  player.rotation.set(0, Math.PI, 0);
+  body.rotation.x = 0;
+
   for (const ring of rings) scene.remove(ring);
   rings.length = 0;
-  for (let row = 0; row < 22; row++) {
-    const z = -row * 7 - 5;
-    const x = Math.sin(row * 0.65) * 3.2;
-    addRing(x - 1, 1.35, z); addRing(x, 1.35, z); addRing(x + 1, 1.35, z);
-  }
+  seedRings();
+
   for (const target of targets) scene.remove(target);
   targets.length = 0;
-  for (const [x, z] of [[-3, -34], [3, -61], [0, -91], [-3, -122], [3, -151]]) addTarget(x, z);
+  seedTargets();
+
   running = true;
   finished = false;
   intro.classList.add('hidden');
@@ -265,6 +297,7 @@ document.getElementById('again').addEventListener('click', resetGame);
 const clock = new THREE.Clock();
 const desiredCameraPosition = new THREE.Vector3();
 const cameraLookAt = new THREE.Vector3();
+const ringCheckPoint = new THREE.Vector3();   // FIX: reused instead of allocating per frame
 
 function animate() {
   requestAnimationFrame(animate);
@@ -302,10 +335,11 @@ function animate() {
       }
     }
 
-    // Face the direction of travel, with a gentle steering lean.
+    // FIX: correct facing formula — local +Z forward is (sinθ, cosθ).
+    // The old atan2(x, -z) turned the model around when running forward.
     if (Math.abs(velocity.x) + Math.abs(velocity.z) > 1.2) {
-      const angle = Math.atan2(velocity.x, -velocity.z);
-      player.rotation.y = THREE.MathUtils.lerp(player.rotation.y, angle, 0.13);
+      const angle = Math.atan2(velocity.x, velocity.z);
+      player.rotation.y = lerpAngle(player.rotation.y, angle, 0.18);
     }
     player.rotation.z = THREE.MathUtils.lerp(player.rotation.z, -sideways * 0.12, 0.12);
     body.rotation.x = Math.sin(performance.now() * 0.012) * Math.min(0.12, velocity.length() * 0.003);
@@ -313,8 +347,9 @@ function animate() {
     // Ring collection
     for (let i = rings.length - 1; i >= 0; i--) {
       const ring = rings[i];
-      ring.rotation.z += dt * 2.4;
-      if (ring.position.distanceTo(new THREE.Vector3(player.position.x, player.position.y + 0.9, player.position.z)) < 1.25) {
+      ring.rotation.y += dt * 3;                       // FIX: coin-spin around Y
+      ringCheckPoint.set(player.position.x, player.position.y + 0.9, player.position.z);
+      if (ring.position.distanceTo(ringCheckPoint) < 1.25) {
         scene.remove(ring);
         rings.splice(i, 1);
         ringsCollected++;
@@ -322,10 +357,14 @@ function animate() {
       }
     }
 
-    // Basic target bump collision; homing attack removes targets.
+    // Target bump — FIX: single response per frame, consistent horizontal distance test.
     for (const target of targets) {
-      if (target.position.distanceTo(player.position) < 1.2 && player.position.y < 1.1) {
-        velocity.z *= 0.55;
+      const dx = target.position.x - player.position.x;
+      const dz = target.position.z - player.position.z;
+      if (dx * dx + dz * dz < 1.44 && player.position.y < 1.2) {
+        velocity.x *= 0.5;
+        velocity.z *= 0.5;
+        break;
       }
     }
 
@@ -350,6 +389,7 @@ function animate() {
       finish.classList.remove('hidden');
     }
 
+    homingCooldown = Math.max(0, homingCooldown - dt);
     speedDisplay.textContent = Math.round(velocity.length() * 4);
   }
 
@@ -362,8 +402,21 @@ function animate() {
     player.position.z + behind.z
   );
   camera.position.lerp(desiredCameraPosition, 1 - Math.pow(0.001, dt));
-  cameraLookAt.set(player.position.x, player.position.y + 1.1, player.position.z - 5);
+
+  // FIX: look in the player's facing direction, not always toward -Z.
+  const fx = Math.sin(player.rotation.y);
+  const fz = Math.cos(player.rotation.y);
+  cameraLookAt.set(
+    player.position.x + fx * 4,
+    player.position.y + 1.1,
+    player.position.z + fz * 4
+  );
   camera.lookAt(cameraLookAt);
+
+  // FIX: move sun + its target with the player so shadows follow the action.
+  sun.position.set(player.position.x - 25, 40, player.position.z + 25);
+  sun.target.position.set(player.position.x, 0, player.position.z);
+  sun.target.updateMatrixWorld();
 
   renderer.render(scene, camera);
 }
