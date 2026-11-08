@@ -915,4 +915,348 @@ function win() {
 }
 
 // ---------------------------------------------------------------- input
-const GAME_KEYS = ['Space', 'ArrowUp', '
+const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'];
+addEventListener('keydown', (e) => {
+  if (GAME_KEYS.includes(e.code)) e.preventDefault();
+  if (e.repeat) return;
+  keys[e.code] = true;
+  if (e.code === 'Space' && state === 'playing') jumpBuffer = 0.12;
+  else if (e.code === 'KeyE') tryHoming();
+  else if (e.code === 'KeyR' && state !== 'menu') startLevel(currentLevelIdx);
+  else if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (state === 'playing' || state === 'paused') setPaused(state === 'playing');
+  }
+  else if (e.code === 'KeyM') { muted = !muted; toast(muted ? 'Sound off' : 'Sound on'); }
+  else if (e.code === 'Enter') {
+    if (state === 'menu') startLevel(0);
+    else if (state === 'won' || state === 'lost') startLevel(currentLevelIdx);
+  }
+});
+addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'Space' && state === 'playing' && isBall && !grounded && !homing && velocityY > 5) velocityY *= 0.5;
+});
+addEventListener('blur', () => {
+  for (const k of Object.keys(keys)) keys[k] = false;
+  if (state === 'playing') setPaused(true);
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'playing') setPaused(true); });
+
+function wire(id, fn) {
+  const el = $(id);
+  if (el) el.addEventListener('click', (ev) => { ev.preventDefault(); el.blur(); fn(); });
+}
+wire('start', () => startLevel(0));
+wire('back-intro', () => { hideOverlays(); ui.intro.classList.remove('hidden'); state = 'menu'; });
+wire('again', () => startLevel(currentLevelIdx));
+wire('retry', () => startLevel(currentLevelIdx));
+wire('resume', () => setPaused(false));
+wire('pause-restart', () => startLevel(currentLevelIdx));
+wire('pause-levels', () => openLevelSelect());
+wire('go-levels', () => openLevelSelect());
+wire('finish-levels', () => openLevelSelect());
+wire('next-level', () => { if (currentLevelIdx + 1 < LEVELS.length) startLevel(currentLevelIdx + 1); });
+wire('to-levels', () => openLevelSelect());
+
+// Expose for any inline handlers
+window.__sonicStartGame = () => startLevel(0);
+window.__sonicStart = () => openLevelSelect();
+
+// ---------------------------------------------------------------- simulation
+function update(dt) {
+  worldTime += dt;
+  const forward = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+  const sideways = (keys.KeyD || keys.ArrowRight ? 1 : 0) - (keys.KeyA || keys.ArrowLeft ? 1 : 0);
+
+  const wantBoost = !!(keys.ShiftLeft || keys.ShiftRight);
+  if (!wantBoost) boostLock = false;
+  boostOn = wantBoost && !boostLock && boostGauge > 0 && hurtTime <= 0;
+  if (boostOn) {
+    boostGauge = Math.max(0, boostGauge - SETTINGS.boostDrain * dt);
+    if (boostGauge === 0) { boostLock = true; boostOn = false; }
+  } else {
+    boostGauge = Math.min(100, boostGauge + SETTINGS.boostRegen * dt);
+  }
+
+  hurtTime = Math.max(0, hurtTime - dt);
+  invincible = Math.max(0, invincible - dt);
+  invinciblePower = Math.max(0, invinciblePower - dt);
+  padTime = Math.max(0, padTime - dt);
+  jumpBuffer = Math.max(0, jumpBuffer - dt);
+  coyote = grounded ? 0.12 : Math.max(0, coyote - dt);
+
+  if (jumpBuffer > 0 && coyote > 0 && !homing && hurtTime <= 0) {
+    velocityY = SETTINGS.jumpPower;
+    grounded = false; isBall = true; coyote = 0; jumpBuffer = 0;
+    onPlatform = null;
+    sfx.jump();
+  }
+
+  const prev = player.position.clone();
+  center.set(player.position.x, player.position.y + 0.9, player.position.z);
+
+  onPlatform = null;
+  for (const p of platforms) {
+    const ox = Math.sin(worldTime * p.moveSpeed + p.phase) * p.moveX;
+    p.mesh.position.x = p.baseX + ox;
+    const dx = Math.abs(player.position.x - p.mesh.position.x);
+    const dz = Math.abs(player.position.z - p.z);
+    if (dx < p.w / 2 + 0.4 && dz < p.d / 2 + 0.4 && player.position.y >= p.y - 0.15 && player.position.y <= p.y + 0.6 && velocityY <= 0.5) {
+      player.position.y = p.y + 0.2;
+      velocityY = 0;
+      grounded = true;
+      isBall = false;
+      onPlatform = p;
+      player.position.x += (p.mesh.position.x - (p.baseX + Math.sin((worldTime - dt) * p.moveSpeed + p.phase) * p.moveX));
+    }
+  }
+
+  if (homing) {
+    const t = homing.target;
+    homing.t -= dt;
+    if (!t.alive || homing.t <= 0) {
+      homing = null;
+    } else {
+      scratch.set(t.group.position.x, Math.max(0, t.group.position.y - 0.8), t.group.position.z).sub(player.position);
+      const dist = scratch.length();
+      if (dist < 1.0) {
+        killEnemy(t);
+        homing = null;
+        velocityY = 11; grounded = false; isBall = true;
+        velocity.z = Math.min(velocity.z, -SETTINGS.boostSpeed * 0.5);
+        velocity.x *= 0.3;
+      } else {
+        scratch.multiplyScalar(1 / dist);
+        velocity.set(scratch.x * SETTINGS.homingSpeed, 0, scratch.z * SETTINGS.homingSpeed);
+        player.position.x += scratch.x * SETTINGS.homingSpeed * dt;
+        player.position.y = Math.max(0, player.position.y + scratch.y * SETTINGS.homingSpeed * dt);
+        player.position.z += scratch.z * SETTINGS.homingSpeed * dt;
+      }
+    }
+  }
+
+  if (!homing) {
+    const moveF = forward !== 0 ? forward : (boostOn ? 1 : 0);
+    let tz = -moveF * (boostOn ? SETTINGS.boostSpeed : SETTINGS.walkSpeed);
+    let tx = sideways * (boostOn ? 14 : 10);
+    let rate = SETTINGS.acceleration * (grounded ? 1 : SETTINGS.airControl);
+    if (hurtTime > 0) { tx = 0; tz = 0; rate = 3; }
+    if (padTime > 0) { tz = -SETTINGS.padSpeed; rate = 22; }
+    velocity.z = THREE.MathUtils.damp(velocity.z, tz, rate, dt);
+    velocity.x = THREE.MathUtils.damp(velocity.x, tx, rate, dt);
+    player.position.x += velocity.x * dt;
+    player.position.z += velocity.z * dt;
+  }
+  player.position.x = clamp(player.position.x, -SETTINGS.worldWidth / 2, SETTINGS.worldWidth / 2);
+  player.position.z = clamp(player.position.z, -levelLength - 14, 14);
+
+  if (!homing && !onPlatform) {
+    const supported = !inPit(player.position.z, 0.35);
+    if (grounded && !supported) { grounded = false; velocityY = 0; isBall = false; }
+    if (!grounded) {
+      velocityY -= SETTINGS.gravity * dt;
+      player.position.y += velocityY * dt;
+      if (supported && prev.y >= -0.05 && player.position.y <= 0 && velocityY <= 0) {
+        player.position.y = 0; velocityY = 0; grounded = true; isBall = false;
+      } else if (supported && player.position.y < -0.05) {
+        player.position.z = prev.z; velocity.z = 0;
+      }
+    }
+  }
+
+  const spd = Math.hypot(velocity.x, velocity.z);
+  if (spd > 1.5) heading += shortest(Math.atan2(velocity.x, velocity.z) - heading) * (1 - Math.exp(-14 * dt));
+  player.rotation.y = heading;
+  rig.rotation.z += (-sideways * 0.15 - rig.rotation.z) * (1 - Math.exp(-10 * dt));
+  if (isBall || homing) rig.rotation.x += dt * 22;
+  else rig.rotation.x = 0;
+
+  const invFlash = invincible > 0 || invinciblePower > 0;
+  player.visible = !invFlash || Math.floor(worldTime * (invinciblePower > 0 ? 12 : 20)) % 2 === 0;
+  if (invinciblePower > 0) body.material.color.setHex(0x66aaff);
+  else body.material.color.setHex(0x0879e8);
+
+  center.set(player.position.x, player.position.y + 0.9, player.position.z);
+  const attacking = isBall || homing || (boostOn && spd > 15) || invinciblePower > 0;
+
+  for (const r of rings) {
+    if (r.taken) continue;
+    if (r.mesh.position.distanceTo(center) < 1.3) {
+      r.taken = true; r.mesh.visible = false;
+      ringsHeld++; ringsCollected++; score += 10;
+      boostGauge = Math.min(100, boostGauge + 3);
+      burst(r.mesh.position, 5, 5, 0xffe04b, 2, 0.35);
+      sfx.ring(ringSfxCount++);
+    }
+  }
+
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    if (e.group.position.distanceTo(center) < 1.5) {
+      if (attacking) {
+        killEnemy(e);
+        if (!grounded && !homing) { velocityY = Math.max(velocityY, 0) + 9; isBall = true; }
+      } else {
+        hurt();
+      }
+    }
+  }
+
+  for (const s of spikes) {
+    if (Math.abs(s.x - player.position.x) < 1.3 && Math.abs(s.z - player.position.z) < 0.8 && player.position.y < 0.7) {
+      if (invinciblePower <= 0) hurt();
+    }
+  }
+
+  for (const sp of springs) {
+    sp.cooldown = Math.max(0, sp.cooldown - dt);
+    if (sp.cooldown === 0 && Math.abs(sp.x - player.position.x) < 1.2 && Math.abs(sp.z - player.position.z) < 1.2 && player.position.y < 0.9 && velocityY <= 0) {
+      velocityY = SETTINGS.springPower; grounded = false; isBall = false; onPlatform = null; sp.cooldown = 0.4;
+      sfx.spring();
+    }
+  }
+
+  for (const p of pads) {
+    if (grounded && Math.abs(p.x - player.position.x) < 2 && Math.abs(p.z - player.position.z) < 1.7 && padTime < 0.3) {
+      padTime = 0.85;
+      sfx.pad();
+    }
+  }
+
+  for (const m of monitors) {
+    if (m.taken) continue;
+    if (Math.abs(m.x - player.position.x) < 1.1 && Math.abs(m.z - player.position.z) < 1.1 && player.position.y < 2.2) {
+      if (attacking || isBall || player.position.y > 0.4) openMonitor(m);
+    }
+  }
+
+  if (!checkpointReached && player.position.z < CHECKPOINT_Z + 3) {
+    checkpointReached = true;
+    if (cpMat) { cpMat.color.setHex(0xff5a3c); cpMat.emissive.setHex(0x802010); }
+    toast('CHECKPOINT!');
+    sfx.check();
+  }
+
+  sparkTimer -= dt;
+  if (boostOn && sparkTimer <= 0) {
+    sparkTimer = 0.03;
+    scratch.set(player.position.x, player.position.y + 0.5, player.position.z + 0.6);
+    burst(scratch, 1, 2, 0x28d7ff, 0, 0.3);
+  }
+  if (invinciblePower > 0 && sparkTimer <= 0) {
+    sparkTimer = 0.05;
+    scratch.set(player.position.x + (Math.random() - 0.5), player.position.y + 0.8, player.position.z + (Math.random() - 0.5));
+    burst(scratch, 1, 1.5, 0xffffff, 0, 0.25);
+  }
+
+  if (player.position.y < -10) { die(); return; }
+  if (player.position.z < -levelLength + 2) win();
+}
+
+function animateScene(dt) {
+  for (const r of rings) if (!r.taken) r.mesh.rotation.z += dt * 2.4;
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    e.group.rotation.y += dt * 1.5;
+    if (e.kind === 'floater') {
+      e.group.position.set(e.baseX + Math.sin(worldTime * e.speed + e.phase) * e.amp, 0.95 + Math.sin(worldTime * 2.2 + e.phase) * 0.2, e.z);
+    } else {
+      e.group.position.set(e.baseX + Math.sin(worldTime * e.speed + e.phase) * e.amp, 0.75, e.z);
+    }
+  }
+  for (const m of monitors) {
+    if (!m.taken) m.group.rotation.y += dt * 1.8;
+  }
+  for (const s of sparks) {
+    if (s.life <= 0) continue;
+    s.life -= dt;
+    if (s.life <= 0) { s.mesh.visible = false; continue; }
+    s.vel.y -= s.grav * dt;
+    s.mesh.position.addScaledVector(s.vel, dt);
+    s.mesh.scale.setScalar(Math.max(0.05, s.life / s.max));
+  }
+  for (const sp of springs) sp.top.position.y = 0.55 + (sp.cooldown > 0 ? 0.35 * (sp.cooldown / 0.4) : 0);
+}
+
+function updateCamera(dt, snap = false) {
+  const spd = Math.hypot(velocity.x, velocity.z);
+  let off = shortest(heading - Math.PI);
+  if (Math.abs(off) > 2.2) off = 0;
+  const targetYaw = Math.PI + clamp(off, -1, 1) * 0.5;
+  camYaw += shortest(targetYaw - camYaw) * (snap ? 1 : 1 - Math.exp(-3 * dt));
+
+  const dist = 10 + Math.min(4, spd * 0.12);
+  const cy = Math.max(player.position.y, -1);
+  const sy = Math.sin(camYaw), cyaw = Math.cos(camYaw);
+  scratch.set(player.position.x - sy * dist, cy + 5.2, player.position.z - cyaw * dist);
+  if (snap) camera.position.copy(scratch);
+  else camera.position.lerp(scratch, 1 - Math.pow(0.001, dt));
+  camera.lookAt(player.position.x + sy * 5, cy + 1.1, player.position.z + cyaw * 5);
+
+  const targetFov = 68 + Math.min(14, spd * 0.3) + (boostOn ? 4 : 0);
+  const newFov = snap ? targetFov : camera.fov + (targetFov - camera.fov) * (1 - Math.exp(-5 * dt));
+  if (Math.abs(newFov - camera.fov) > 0.01) { camera.fov = newFov; camera.updateProjectionMatrix(); }
+
+  sun.target.position.copy(player.position);
+  sun.position.copy(player.position).add(SUN_OFFSET);
+}
+
+const projected = new THREE.Vector3();
+function updateHud() {
+  setText(ui.rings, String(ringsHeld));
+  setText(ui.score, String(score));
+  setText(ui.time, fmtTime(worldTime));
+  setText(ui.lives, `x${lives}`);
+  setText(ui.speed, String(Math.round(Math.hypot(velocity.x, velocity.z) * 4)));
+  const pct = Math.round(boostGauge);
+  if (lastText.get(ui.boost) !== pct) { lastText.set(ui.boost, pct); ui.boost.style.width = pct + '%'; }
+  ui.boost.classList.toggle('locked', boostLock);
+
+  let target = null;
+  if (state === 'playing') target = homing ? homing.target : findTarget();
+  if (target && target.alive) {
+    projected.copy(target.group.position).project(camera);
+    if (projected.z < 1) {
+      ui.reticle.style.transform = `translate(${(projected.x * 0.5 + 0.5) * innerWidth}px, ${(-projected.y * 0.5 + 0.5) * innerHeight}px)`;
+      ui.reticle.classList.remove('hidden');
+      return;
+    }
+  }
+  ui.reticle.classList.add('hidden');
+}
+
+const clock = new THREE.Clock();
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), 0.033);
+  if (state === 'playing') update(dt);
+  animateScene(dt);
+  updateCamera(dt);
+  updateHud();
+  renderer.render(scene, camera);
+}
+
+buildLevel(0);
+resetLevelState();
+frame();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+if (location.search.includes('debug')) {
+  window.__sonic = {
+    get state() { return state; },
+    get lives() { return lives; },
+    get rings() { return ringsHeld; },
+    get score() { return score; },
+    get gauge() { return boostGauge; },
+    get checkpoint() { return checkpointReached; },
+    get level() { return currentLevelIdx; },
+    player, enemies, LEVELS,
+    teleport(x, y, z) { player.position.set(x, y, z); grounded = y <= 0.3; velocityY = 0; },
+    unlockAll() { unlockedLevels = LEVELS.length; saveUnlocked(unlockedLevels); }
+  };
+}

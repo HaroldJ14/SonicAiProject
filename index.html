@@ -13,16 +13,14 @@
       <div>RINGS <strong id="rings">0</strong></div>
       <div>SCORE <strong id="score">0</strong></div>
       <div>TIME <strong id="time">0:00.00</strong></div>
-      <div>LIVES <strong id="lives">×3</strong></div>
+      <div>LIVES <strong id="lives">x3</strong></div>
       <div>SPEED <strong id="speed">0</strong></div>
     </div>
   </div>
-
   <div id="boostbar" aria-label="Boost gauge"><div id="boostfill"></div></div>
   <div id="reticle" class="hidden"></div>
   <div id="toast"></div>
   <div id="level-name" class="hidden"></div>
-
   <div id="intro" class="overlay">
     <div class="panel">
       <p class="eyebrow">3D PLATFORMING PROTOTYPE</p>
@@ -36,39 +34,36 @@
         <span><b>P / ESC</b> Pause</span>
         <span><b>R / M</b> Restart / Mute</span>
       </div>
-      <button id="start">SELECT LEVEL</button>
+      <button id="start" type="button">START GAME</button>
+      <button id="to-levels" type="button" class="secondary">LEVEL SELECT</button>
     </div>
   </div>
-
   <div id="levelselect" class="overlay hidden">
     <div class="panel wide">
       <p class="eyebrow">CHOOSE YOUR STAGE</p>
       <h1>LEVEL<br><span>SELECT</span></h1>
       <div id="level-grid" class="level-grid"></div>
-      <button id="back-intro" class="secondary">BACK</button>
+      <button id="back-intro" type="button" class="secondary">BACK</button>
     </div>
   </div>
-
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <p class="eyebrow">PAUSED</p>
       <h1>TAKE A<br><span>BREATHER</span></h1>
-      <button id="resume">RESUME</button>
-      <button id="pause-restart" class="secondary">RESTART LEVEL</button>
-      <button id="pause-levels" class="secondary">LEVEL SELECT</button>
+      <button id="resume" type="button">RESUME</button>
+      <button id="pause-restart" type="button" class="secondary">RESTART LEVEL</button>
+      <button id="pause-levels" type="button" class="secondary">LEVEL SELECT</button>
     </div>
   </div>
-
   <div id="gameover" class="overlay hidden">
     <div class="panel">
       <p class="eyebrow">OUT OF LIVES</p>
       <h1>GAME<br><span>OVER</span></h1>
       <p id="go-stats"></p>
-      <button id="retry">TRY AGAIN</button>
-      <button id="go-levels" class="secondary">LEVEL SELECT</button>
+      <button id="retry" type="button">TRY AGAIN</button>
+      <button id="go-levels" type="button" class="secondary">LEVEL SELECT</button>
     </div>
   </div>
-
   <div id="finish" class="overlay hidden">
     <div class="panel">
       <p class="eyebrow">LEVEL COMPLETE</p>
@@ -77,4 +72,18 @@
         <div><b>TIME</b><span id="f-time">0:00.00</span></div>
         <div><b>RINGS</b><span id="f-rings">0</span></div>
         <div><b>SCORE</b><span id="f-score">0</span></div>
-        <div><b>RANK</b><span id="f-rank" cla
+        <div><b>RANK</b><span id="f-rank" class="rank">-</span></div>
+      </div>
+      <p id="f-best"></p>
+      <div class="btn-row">
+        <button id="again" type="button">PLAY AGAIN</button>
+        <button id="next-level" type="button" class="secondary">NEXT LEVEL</button>
+        <button id="finish-levels" type="button" class="secondary">LEVEL SELECT</button>
+      </div>
+    </div>
+  </div>
+  <div id="hint">WASD / arrows: move · Space: jump · Shift: boost · E: homing · P: pause · R: restart · M: mute</div>
+  <div id="error"></div>
+  <script type="module" src="game.js" onerror="var e=document.getElementById('error');e.textContent='Could not load game.js. Serve this folder from a local web server (see README).';e.style.display='block';"></script>
+</body>
+</html>
