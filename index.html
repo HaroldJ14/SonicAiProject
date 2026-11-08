@@ -1,89 +1,109 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sonic 3D — Hybrid Generations</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="hud">
     <div class="logo">SONIC <span>3D</span></div>
     <div class="stats">
-      <div>RINGS <strong id="rings">0</strong></div>
-      <div>SCORE <strong id="score">0</strong></div>
-      <div>TIME <strong id="time">0:00.00</strong></div>
-      <div>LIVES <strong id="lives">x3</strong></div>
-      <div>SPEED <strong id="speed">0</strong></div>
+      <div>RINGS<strong id="rings">0</strong></div>
+      <div>SCORE<strong id="score">0</strong></div>
+      <div>TIME<strong id="time">0:00.00</strong></div>
+      <div>LIVES<strong id="lives">x3</strong></div>
+      <div>SPEED<strong id="speed">0</strong></div>
     </div>
   </div>
-  <div id="boostbar" aria-label="Boost gauge"><div id="boostfill"></div></div>
+
+  <div id="boostbar"><div id="boostfill"></div></div>
   <div id="reticle" class="hidden"></div>
   <div id="toast"></div>
-  <div id="level-name" class="hidden"></div>
+  <div id="level-name"></div>
+  <div id="hint">WASD / Arrows: Move · Space: Jump · Shift: Boost/Air Dash · E: Homing · P: Pause</div>
+  <div id="error"></div>
+
+  <!-- Main Menu Overlay -->
   <div id="intro" class="overlay">
     <div class="panel">
       <p class="eyebrow">3D PLATFORMING PROTOTYPE</p>
-      <h1>SONIC<br><span>GENERATIONS</span></h1>
-      <p>Hybrid free-roam + boost gameplay. Collect rings, smash bots, clear the goal!</p>
+      <h1>SONIC <span>GENERATIONS</span></h1>
+      <p>Hybrid free-roam + boost gameplay. Collect rings, smash bots, and clear the goal!</p>
       <div class="control-grid">
         <span><b>WASD / ARROWS</b> Move</span>
-        <span><b>SPACE</b> Jump (hold = higher)</span>
-        <span><b>SHIFT</b> Boost (uses gauge)</span>
-        <span><b>E</b> Homing attack</span>
-        <span><b>P / ESC</b> Pause</span>
+        <span><b>SPACE</b> Jump (Hold = Higher)</span>
+        <span><b>SHIFT</b> Boost / Air Dash</span>
+        <span><b>E</b> Homing Attack</span>
+        <span><b>P / ESC</b> Pause Game</span>
         <span><b>R / M</b> Restart / Mute</span>
       </div>
-      <button id="start" type="button">START GAME</button>
-      <button id="to-levels" type="button" class="secondary">LEVEL SELECT</button>
+      <div class="btn-row">
+        <button id="start">START GAME</button>
+        <button id="to-levels" class="secondary">LEVEL SELECT</button>
+      </div>
     </div>
   </div>
+
+  <!-- Level Select Overlay -->
   <div id="levelselect" class="overlay hidden">
     <div class="panel wide">
       <p class="eyebrow">CHOOSE YOUR STAGE</p>
-      <h1>LEVEL<br><span>SELECT</span></h1>
+      <h1>LEVEL <span>SELECT</span></h1>
       <div id="level-grid" class="level-grid"></div>
-      <button id="back-intro" type="button" class="secondary">BACK</button>
+      <div class="btn-row">
+        <button id="back-intro" class="secondary">BACK</button>
+      </div>
     </div>
   </div>
+
+  <!-- Pause Overlay -->
   <div id="pause" class="overlay hidden">
     <div class="panel">
       <p class="eyebrow">PAUSED</p>
-      <h1>TAKE A<br><span>BREATHER</span></h1>
-      <button id="resume" type="button">RESUME</button>
-      <button id="pause-restart" type="button" class="secondary">RESTART LEVEL</button>
-      <button id="pause-levels" type="button" class="secondary">LEVEL SELECT</button>
+      <h1>TAKE A <span>BREATHER</span></h1>
+      <div class="btn-row">
+        <button id="resume">RESUME</button>
+        <button id="pause-restart" class="secondary">RESTART LEVEL</button>
+        <button id="pause-levels" class="secondary">LEVEL SELECT</button>
+      </div>
     </div>
   </div>
+
+  <!-- Game Over Overlay -->
   <div id="gameover" class="overlay hidden">
     <div class="panel">
       <p class="eyebrow">OUT OF LIVES</p>
-      <h1>GAME<br><span>OVER</span></h1>
+      <h1>GAME <span>OVER</span></h1>
       <p id="go-stats"></p>
-      <button id="retry" type="button">TRY AGAIN</button>
-      <button id="go-levels" type="button" class="secondary">LEVEL SELECT</button>
+      <div class="btn-row">
+        <button id="retry">TRY AGAIN</button>
+        <button id="go-levels" class="secondary">LEVEL SELECT</button>
+      </div>
     </div>
   </div>
+
+  <!-- Level Complete Overlay -->
   <div id="finish" class="overlay hidden">
     <div class="panel">
       <p class="eyebrow">LEVEL COMPLETE</p>
-      <h1>AWESOME<br><span>RUN!</span></h1>
+      <h1>AWESOME <span>RUN!</span></h1>
       <div class="results">
         <div><b>TIME</b><span id="f-time">0:00.00</span></div>
         <div><b>RINGS</b><span id="f-rings">0</span></div>
         <div><b>SCORE</b><span id="f-score">0</span></div>
         <div><b>RANK</b><span id="f-rank" class="rank">-</span></div>
       </div>
-      <p id="f-best"></p>
+      <p id="f-best" class="eyebrow"></p>
       <div class="btn-row">
-        <button id="again" type="button">PLAY AGAIN</button>
-        <button id="next-level" type="button" class="secondary">NEXT LEVEL</button>
-        <button id="finish-levels" type="button" class="secondary">LEVEL SELECT</button>
+        <button id="again" class="secondary">PLAY AGAIN</button>
+        <button id="next-level">NEXT LEVEL</button>
+        <button id="finish-levels" class="secondary">LEVEL SELECT</button>
       </div>
     </div>
   </div>
-  <div id="hint">WASD / arrows: move · Space: jump · Shift: boost · E: homing · P: pause · R: restart · M: mute</div>
-  <div id="error"></div>
-  <script type="module" src="game.js" onerror="var e=document.getElementById('error');e.textContent='Could not load game.js. Serve this folder from a local web server (see README).';e.style.display='block';"></script>
+
+  <script type="module" src="game.js"></script>
 </body>
 </html>
