@@ -14,7 +14,7 @@ A small browser-based 3D platforming prototype with a third-person chase camera.
 - A / Left and D / Right: steer
 - Space: jump
 - Shift: boost
-- E: homing attack (when a target is nearby)
+- E: homing attack (while airborne, when a target is nearby)
 - R: restart
 
 ## Run locally
